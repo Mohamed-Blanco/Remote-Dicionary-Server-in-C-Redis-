@@ -14,21 +14,25 @@ static int32_t write_full(int fd ,const char *buf , size_t n );
 
 int main(int argc,char *argv[])
 {
+
+    // step 1 : creating a socket
     int fd = socket(AF_INET , SOCK_STREAM, 0);
     if (fd < 0 )
     {
         perror("socket");
         return 1;
     }
-    
+
+    // step 2 : binding the socket with localhost
     struct sockaddr_in addr = {}; 
     addr.sin_family = AF_INET ; 
     addr.sin_port = ntohs(1234); 
     addr.sin_addr.s_addr = ntohl(INADDR_LOOPBACK); //127.0.0.1 , is defined by 0x7f000001 localhost basicly 
 
-    
+    // step 3 : connecting to the server socket
     int rv = connect(fd,(const struct sockaddr *)&addr, sizeof(addr)) ; 
 
+    // check connection status
     if(rv < 0 )
     {
         perror("connection problem client");
@@ -36,33 +40,44 @@ int main(int argc,char *argv[])
         return -1 ;  // non zero exit means error 
     }
 
-    int32_t err = query(fd , "hello1"); 
+    // step 4 : creating a request to the server
+    //req 1
+    int32_t err = query(fd , "hello1");
     if(err)
     {
         goto L_DONE;    
     }
 
+    //req 2
     err = query(fd , "hello2"); 
     if(err)
     {
         goto L_DONE ;
     }
 
+    // final step is closing the socket
     L_DONE : 
         close(fd); 
         return 0 ; 
 }
 
+
+// this function is responsible of sending the request to the TCP server
 static int32_t query(int fd , const char *text)
 {
+
+    // step 1 : getting the length of the text to send
     uint32_t len = (uint32_t) strlen(text); 
-    if (len > K_MAX_MSG)
+    if (len > K_MAX_MSG) // max buff size defined
     {
         return -1 ; 
     }
 
     //send request
     char wbuf[4+K_MAX_MSG];
+
+    //memcpy is a binary safe copy string function , so it copies the function no matter what the ending is , this explains why we dont use strcpy
+    // memcpy(destination , source , length )
     memcpy(wbuf , &len , 4 ); //assume little endian  
     memcpy(&wbuf[4],text , len);
 
@@ -105,7 +120,7 @@ static int32_t query(int fd , const char *text)
 
 
 
-
+//same role as the server
 static int32_t read_full(int fd , char *buf , size_t n )
 {
     while(n>0)
@@ -121,7 +136,7 @@ static int32_t read_full(int fd , char *buf , size_t n )
     }
     return 0 ; 
 }
-
+//same role as the server
 static int32_t write_full(int fd ,const char *buf , size_t n )
 {
     while(n>0)

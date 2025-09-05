@@ -17,7 +17,6 @@ static int32_t one_request(int connfd);
 
 int main(int argc,char *argv[])
 {
-    printf("Ready to accept clients \n");
 
     /*step 1 : obtaining the socket using socket()*/
     int fd = socket(
@@ -56,20 +55,26 @@ int main(int argc,char *argv[])
         close(rv);
     }
 
+    //step 4 : listening on the IP/PORT
     rv = listen(
         fd,// the socket
         SOMAXCONN /* sizeof the queue */
     );
 
+    // step 5 : Clients Handeling
     while(1)
     {
+        // preparing the client socket
         struct sockaddr_in client_addr = {} ;
         socklen_t addrlen = sizeof(client_addr);
+
+        //accepting the client connection
         int connfd = accept(fd, (struct sockaddr *)&client_addr, &addrlen);
         if (connfd <= 0 ) {
             continue ; /* error */
         }
 
+        //while the read does not encounter an EOF or error , its working
         while (1)
         {
             int32_t err = one_request(connfd);
@@ -78,10 +83,9 @@ int main(int argc,char *argv[])
                 break;
             }
         }
+        // final step is closing the connection with the client
         close(connfd);
     }
-
-
 
     return 0 ;
 }
@@ -126,8 +130,9 @@ static int32_t one_request(int connfd)
     memcpy(&wbuf[4], reply , len); /* copy the actual message right after the first 4 bytes */
     
     return write_full(connfd , wbuf , 4+len);
-} 
+}
 
+//function responds to one specefique request at the time
 static void do_somthing(int connfd )    {
     char rbuf[64] = {}; 
     ssize_t n = read(
@@ -156,7 +161,7 @@ static void do_somthing(int connfd )    {
     
 } 
 
-
+//reading the buff out of TCP/Protocole , for more check docs
 static int32_t read_full(int fd , char *buf , size_t n )
 {
     while(n>0)
@@ -173,6 +178,7 @@ static int32_t read_full(int fd , char *buf , size_t n )
     return 0 ; 
 }
 
+// same
 static int32_t write_full(int fd ,const char *buf , size_t n )
 {
     while(n>0)
