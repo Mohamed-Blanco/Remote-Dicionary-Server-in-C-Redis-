@@ -1,19 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <assert.h>
+
+#pragma once
 #include <stdbool.h>
-#include <stdint.h>
-#include <poll.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <poll.h>
 #include "../conn.h"
+
 
 struct Conn *handle_accept(int fd);
 void handle_write(struct Conn *conn );

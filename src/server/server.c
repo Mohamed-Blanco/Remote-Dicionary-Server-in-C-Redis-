@@ -1,9 +1,25 @@
 
 #include "server.h"
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include "../globals/globals.h"
+
+
 
 int intialize_server()
 {
+
+    //initialize the database
+    dlist_init(&glob_db.idle_list);
+
     // Disable output buffering
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -37,6 +53,17 @@ int intialize_server()
         printf("Bind failed: %s \n", strerror(errno));
         return -1;
      }
+
+    printf("SERVER STARTED SUCCESSFULLY \n");
+
+    int connection_backlog = 5;
+    if (listen(server_fd, connection_backlog) != 0) {
+        printf("Listen failed: %s \n", strerror(errno));
+        return 1;
+    }
+
+    printf("SERVER WAITING FOR CLIENTS CONNECTIONS  \n");
+
 
 	return server_fd ;
 }

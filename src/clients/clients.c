@@ -1,6 +1,30 @@
 
 #include "clients.h"
 #include "../messages/messages.h"
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <assert.h>
+#include <assert.h>
+#include <fcntl.h>
+
+#include "../globals/globals.h"
+
+
+
+
+static uint64_t get_monotonic_msec() {
+    struct timespec tv = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &tv);
+    return (uint64_t)tv.tv_sec * 1000 + tv.tv_nsec / 1000 / 1000;
+}
+
 
 struct Conn *handle_accept(int fd)
 {
@@ -28,6 +52,7 @@ struct Conn *handle_accept(int fd)
     conn->fd = connfd ;
 
     conn->want_read = true ;
+
     return conn ;
 }
 
