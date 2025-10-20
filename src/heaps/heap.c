@@ -6,26 +6,39 @@
 #include "../globals/globals.h"
 #include <stdlib.h>
 
+#define INITIAL_CAPACITY 10
 
-void heap_delete(HeapArray *a , int pos  )
+
+void heap_delete(Array *a , int position  )
 {
-    if (pos >= a->size) return;  // safety check
+
+    if (!a || position < 0 || position >= a->used ) return ;
+
     //swapping the last item with the first item
-    a->items[pos] = a->items[a->size-1] ;
+    a->array[position] = a->array[a->used-1] ;
+    a->used--;
 
-    //deleting the item
-    free(a->items);
-    a->size--;
+    heap_update(a,position , a->used);
 
-    if (pos < a->size)
+    //shrink after delete
+    if (a->used <= (int)(a->size/4) && a->size> INITIAL_CAPACITY )
     {
-        heap_update(a,pos , a->size);
+        a->size /= 2 ;
+        HeapItem* tmp = realloc(a->array, a->size * sizeof(HeapItem));
+        if (tmp) {
+            a->array = tmp;
+        } else {
+            perror("Realloc failed while shrinking heap");
+        }
     }
+
 }
 
-void heap_update(HeapArray *a , int pos , size_t len )
+void heap_update(Array *a , int pos , size_t len )
 {
-    if (pos > 0 && a->items[heap_parent(pos)].val > a->items[pos].val  )
+    if (!a || len == 0 || pos < 0 || pos >= len) return;
+
+    if (pos > 0 &&  a->array[pos].val < a->array[heap_parent(pos)].val )
     {
         bubble_up(a , pos );
     }else
@@ -35,59 +48,65 @@ void heap_update(HeapArray *a , int pos , size_t len )
 }
 
 //when adding :
-//the new element might be the new min value , so we need to bubble down
-static void bubble_up(HeapArray *a , int position )
+//the new element might be the new min value , so we need to bubble up
+static void bubble_up(Array *a , int position )
 {
-    HeapItem node = a->items[position] ;
-    while (position > 0 && a->items[position].val > node.val) // we will keep bubelling down the element until we find its place
+    HeapItem node = a->array[position] ;
+    while (position > 0 && a->array[heap_parent(position)].val > node.val) // we will keep bubelling down the element until we find its place
     {
-        a->items[position] = a->items[heap_parent(position)];
-        *a->items[position].ref = position ;
+        a->array[position] = a->array[heap_parent(position)];
+        if (a->array[position].ref)
+            *a->array[position].ref = position;
         position = heap_parent(position);
     }
 
-    a->items[position] = node ;
-    *a->items[position].ref = position ;
+    a->array[position] = node ;
+    if (a->array[position].ref)
+        *a->array[position].ref = position;
 
 }
 
 //when remove :
 //the new old element might be the min value , so we need to search for the next mean value
-static void bubble_down(HeapArray *a , int pos , size_t len )
+static void bubble_down(Array *a , int pos , size_t len )
 {
-    HeapItem t = a->items[pos] ;
-
+    HeapItem t = a->array[pos] ;
+    if (pos < 0) return ;
     while (true)
     {
         size_t l = heap_left_child(pos) ;
         size_t r = heap_right_child(pos) ;
-        size_t min_pos = pos ;
+        int min_pos = pos ;
         uint64_t min_val = t.val ;
 
-        if (l < len && a->items[l].val < min_val )
+        if (l < len && a->array[l].val < min_val )
         {
             min_pos = l ;
-            min_val = a->items[l].val ;
+            min_val = a->array[l].val ;
         }
 
-        if (r < len && a->items[r].val < min_val )
+        if (r < len && a->array[r].val < min_val )
         {
             min_pos = r ;
         }
 
         if (min_pos == pos )
         {
+            if (a->array[pos].ref)
+                *a->array[pos].ref = pos;
             break ;
         }
 
-        //swap with the kid
-        a->items[pos] = a->items[min_pos] ;
-        pos = min_pos ;
-        *a->items[pos].ref = pos ;
+        HeapItem temp = a->array[pos] ;
+        a->array[pos] = a->array[min_pos] ;
+        a->array[min_pos] = temp ;
 
+        if (a->array[pos].ref)
+            *a->array[pos].ref = pos;
+        *a->array[min_pos].ref = min_pos ;
+
+        pos = min_pos ;
     }
-    a->items[pos] = t ;
-    *a->items[pos].ref = pos ;
 }
 
 static size_t heap_left_child(size_t i )
@@ -107,51 +126,26 @@ static size_t heap_right_child(size_t i)
 
 static size_t heap_parent(size_t i )
 {
-    return (i+1)/2-1;
+    return (i-1)/2;
     /*
      * if index is 3 the parent index is (3+1) /2 -1 = 1
      */
 }
 
-
+//dont forget to update the usage of them
 //this funciton checks if the entry already has an heapItem or we should create a new one for this Entry
-void heap_upsert(HeapArray **heap, int pos, HeapItem t)
-{
-    if (*heap == NULL)
+void heap_insert(Array *a, int pos, HeapItem t) {
+    if (pos >= 0 && pos < a->used )
     {
-        *heap = malloc(sizeof(HeapArray));
-        (*heap)->size = 0;
-        (*heap)->items = NULL;
-    }
-
-    HeapArray *h = *heap;
-
-    if (pos == -1 && h->size == 0 )
-    {
-        h->size = 1;
-        h->items = realloc(h->items, sizeof(HeapItem) * h->size);
-        *t.ref = 0;
-        h->items[0] = t;
-        return;
-    }
-    if (pos < h->size )
-    {
-        h->items[pos] = t ;
+        a->array[pos]= t ;
     }else
     {
-        h->size += 1;
-        h->items = realloc(h->items, sizeof(HeapItem) * h->size);
-        h->items[h->size - 1] = t;
+        insertArray(a,t);
+        pos = a->used -1 ;
     }
-    heap_update(h, pos, h->size); // what is the role of this now ?
-}
 
-
-
-
-
-
-
+    heap_update(a, pos, a->used); // check if we need to bubble up or down
+    }
 
 /*
  * this is what array decoding means , no need for pointers no need for null pointer nothing

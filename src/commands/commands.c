@@ -51,7 +51,7 @@ const char* do_set(char *search_key , int key_length , char *value  )
         perror("VALUE IS ALREADY DEFINED STORED !! \n");
     } else
     {
-        Entry *ent = (Entry*)malloc(sizeof(Entry));
+        Entry *ent = malloc(sizeof(Entry));
         ent->key = strdup(search_key);
         ent->value = strdup(value);
         ent->node.hcode = entry.node.hcode ;

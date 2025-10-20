@@ -17,6 +17,7 @@
 #include <time.h>      // for clock_gettime() and CLOCK_MONOTONIC
 #include <stdint.h>    // optional, if you need uint64_t for conversions
 #include "DLinkedList/list.h"
+#include "dynamicArrays/DynamicArrays.h"
 
 #define K_MAX_TTL_WORK  10
 const uint64_t k_idle_timeout_ms = 20 * 1000;
@@ -169,21 +170,24 @@ static void process_timers()
 	uint64_t now_ms = get_monotonic_msec();
 	DList *node = glob_db.idle_list.next;
 
-	const HeapArray *heap = glob_db.heap ;
+	const Array *heap = &glob_db.heap ;
 	size_t nworks = 0 ;
 
 
 
-	while (heap != NULL && heap->items[0].val < now_ms && nworks < K_MAX_TTL_WORK )
+	while ( heap != NULL && heap->used > 0 && heap->array[0].val < now_ms && nworks < K_MAX_TTL_WORK )
 	{
-		Entry *ent = container_of(heap->items[0].ref , Entry , heap_idx) ;
+		HeapItem *top = &heap->array[0];
+		if (!top->ref) break;
+		Entry *ent = container_of(top->ref, Entry, heap_idx);
 
+		//deleting from the hashtable
 		HNode *hnode = hm_delete(&glob_db.db , &ent->node , &hnode_same ) ;
-		hm_delete(&glob_db.db, &ent->node, &hnode_same);
 
-		assert(hnode == &ent->node);
+		//assert(hnode == &ent->node);
 		fprintf(stderr, "key expired: %s\n", ent->key );
 
+		//deleting the intrusive data structure
 		entry_del_ttl(ent);
 		++nworks ;
 	}
@@ -234,10 +238,13 @@ static int32_t next_timer_ms()
 	uint64_t next_ms = conn->last_active_ms + k_idle_timeout_ms ;
 
 	//TTL timers using a heap :
-	if (glob_db.heap != NULL && glob_db.heap->items[0].val < next_ms)
+
+	if (glob_db.heap.used > 0 && glob_db.heap.array[0].val < next_ms)
 	{
-		next_ms = glob_db.heap->items[0].val ;
+		next_ms = glob_db.heap.array[0].val ;
 	}
+
+
 
 
 	if (next_ms == (uint64_t)-1)

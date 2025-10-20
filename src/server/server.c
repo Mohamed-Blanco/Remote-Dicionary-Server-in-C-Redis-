@@ -19,6 +19,8 @@ int intialize_server()
 
     //initialize the database
     dlist_init(&glob_db.idle_list);
+    //intialize the hashmap
+    initArray(&glob_db.heap,10);
 
     // Disable output buffering
     setbuf(stdout, NULL);

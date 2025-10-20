@@ -50,7 +50,7 @@ typedef struct Global_database
     HMap db ;
     struct Conn clients_cons[MAX_CLIENTS];
     DList idle_list ;
-    HeapArray *heap ;
+    Array heap ;
 
 }  Global_database;
 

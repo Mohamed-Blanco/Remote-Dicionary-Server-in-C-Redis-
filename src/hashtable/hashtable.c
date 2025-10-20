@@ -175,9 +175,14 @@ bool entry_eq(HNode *lhs , HNode *rhs )
 
 void entry_del_ttl(Entry *ent)
 {
-    entry_set_ttl(ent,-1);
+    entry_set_ttl(ent, -1);
+
+    if (ent->key) free(ent->key);
+    if (ent->value) free(ent->value);
+
     free(ent);
 }
+
 
 static uint64_t get_monotonic_msec() {
     struct timespec tv = {0, 0};
@@ -190,13 +195,13 @@ void entry_set_ttl(Entry *ent , int64_t ttl_ms)
 {
     if (ttl_ms < 0 && ent->heap_idx != -1)
     {
-        heap_delete(glob_db.heap, ent->heap_idx);
+        heap_delete(&glob_db.heap, ent->heap_idx);
         ent->heap_idx = -1 ;
     }else if (ttl_ms >= 0 )
     {
         uint64_t expire_at = get_monotonic_msec() + (uint64_t) ttl_ms ;
         HeapItem item = {expire_at , &ent->heap_idx };
-        heap_upsert(&glob_db.heap, ent->heap_idx, item);
+        heap_insert(&glob_db.heap, ent->heap_idx, item);
     }
 }
 
