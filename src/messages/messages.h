@@ -1,11 +1,11 @@
 #include "../conn.h"
 
 
-
 bool handle_EXPIRE(char *msg_ptr , struct Conn *client_conn , char* message);
 void handle_PING(struct Conn *client_conn ) ;
 bool handle_GET(char *msg_ptr , struct Conn *client_conn , char* message);
 bool handle_SET(char *msg_ptr , struct Conn *client_conn , char* message);
+bool handle_SET_EX(char *msg_ptr , struct Conn *client_conn , char* message);
 void buf_append(uint8_t *outgoing_buf ,size_t *outgoing_len, const uint8_t *data , size_t lenof_data );
 void buf_consume(uint8_t *buf ,size_t *total_len , size_t nbytes_todelte);
 char* byte_to_string(uint8_t *message_inbytes, size_t message_len );

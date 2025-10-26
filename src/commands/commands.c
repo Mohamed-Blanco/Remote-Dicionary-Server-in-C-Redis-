@@ -64,7 +64,7 @@ const char* do_set(char *search_key , int key_length , char *value  )
 }
 
 
-const bool do_expire(char *key, int key_length, size_t ttl  )
+const bool do_expire(char *key, int key_length, size_t ttl )
 {
     Entry entry ;
     entry.key = key ;
@@ -75,7 +75,7 @@ const bool do_expire(char *key, int key_length, size_t ttl  )
     if (node) //if its a valid node
     {
         Entry *ent = container_of(node,Entry,node); // getting the Actual Entry From the Hmap in the global db
-        entry_set_ttl(ent, ttl*1000); //need to multiply by 1000 to convert from sec to ms
+        entry_set_ttl(ent, ttl); //need to multiply by 1000 to convert from sec to ms
 
         return true  ;
     }

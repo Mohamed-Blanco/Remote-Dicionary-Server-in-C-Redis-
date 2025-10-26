@@ -178,11 +178,137 @@ bool handle_SET(char *msg_ptr , struct Conn *client_conn , char* message)
 
     const char *response = do_set(set_key, set_key_length , set_value);
 
-    buf_append(client_conn->outgoing , &client_conn->outgoing_len , response , strlen(response) );
-    buf_consume(client_conn->incomming, &client_conn->incomming_len, ((newline)-msg_ptr)+1);
+        buf_append(client_conn->outgoing , &client_conn->outgoing_len , response , strlen(response) );
+        buf_consume(client_conn->incomming, &client_conn->incomming_len, ((newline)-msg_ptr)+1);
 
     return true ;
 }
+
+
+bool handle_SET_EX(char *msg_ptr , struct Conn *client_conn , char* message)
+{
+    char *newline = strchr(message,'\n'); // extract the length of the message
+    if (!newline) return false; // if we did not find the end of that message
+
+    int set_key_length = extract_number(message+1, newline);
+    printf("SET KEY MSG LENGTH IS : %d \n", set_key_length);
+
+    if (set_key_length >= K_MAX_MSG) {
+        client_conn->want_close = true;
+        perror("SET KEY LENGTH IS TO LONG ! \n ");
+        perror("CONNECTION CLOSED \n BYE ;) ");
+        return false;
+    }
+
+    message = newline + 1;
+
+    // See if the message is received completely
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    // Extracting the message (FIX: +1 for null terminator)
+    char set_key[set_key_length + 1];
+    memcpy(set_key, message, set_key_length);
+    set_key[set_key_length] = '\0';  // FIX: Correct index
+
+    printf("SET KEY IS : %s\n", set_key);  // FIX: Print echo_msg
+
+    // Move to the actual message content
+    message = newline + 1;
+
+    //Extracting the Value
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    int set_value_length = extract_number(message+1, newline);
+    printf("SET VALUE MSG LENGTH IS : %d \n", set_value_length);
+
+    if (set_value_length >= K_MAX_MSG) {
+        client_conn->want_close = true;
+        perror("SET VALUE LENGTH IS TO LONG ! \n ");
+        perror("CONNECTION CLOSED \n BYE ;) ");
+        return false;
+    }
+
+    message = newline + 1;
+
+    // See if the message is received completely
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    char set_value[set_value_length + 1];
+    memcpy(set_value, message, set_value_length);
+    set_value[set_value_length] = '\0';
+
+    printf("SET VALUE IS : %s\n", set_value);
+
+    const char *response = do_set(set_key, set_key_length , set_value);
+
+    message = newline + 1;
+
+    //Extracting EX or PX Length :
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    int ex_type_length = extract_number(message+1, newline);
+
+    if (ex_type_length > 2 ) {
+        client_conn->want_close = true;
+        perror("Wrong Handeling EX PX KEY  \n ");
+        perror("CONNECTION CLOSED \n BYE ;) ");
+        return false;
+    }
+
+    message = newline + 1;
+
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    // Extracting the message (FIX: +1 for null terminator)
+    char ex_type[ex_type_length + 1];
+    memcpy(ex_type, message, set_key_length);
+    ex_type[ex_type_length] = '\0';  // FIX: Correct index
+
+
+    //Step 4 Extracting the TLL , we need to get the length of the number first
+    message = newline + 1;
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    size_t ttl_length = extract_number(message+1,newline);
+
+    message = newline + 1;
+
+    newline = strchr(message,'\n');
+    if (!newline) return false;
+
+    int ttl = extract_number(message, message+ttl_length);
+    printf("EXPIRE TTL : %d \n", ttl );
+    if (ttl < 0 ) return false ;
+
+    if ((strcmp(ex_type,"EX") == 0 ))
+    {
+        ttl *= 1000  ;
+    }
+
+    const char *result;  // pointer to a string, no fixed size needed
+
+    if (do_expire(set_key, set_key_length ,ttl))
+    {
+        result = "+OK\r\n";   // points to string literal
+    }
+    else
+    {
+        result = "$-1\r\n";   // points to string literal
+    }
+
+    buf_append(client_conn->outgoing , &client_conn->outgoing_len , result , strlen(result) );
+    buf_consume(client_conn->incomming, &client_conn->incomming_len, ((newline)-msg_ptr)+1);
+
+}
+
+
+
 
 bool handle_GET(char *msg_ptr , struct Conn *client_conn , char* message)
 {
@@ -330,11 +456,16 @@ bool parse_command(char *msg_ptr,char *command_start, int command_length , struc
         printf("This is an ECHO command \n");
         if (elements_number != 2 ) return false;
         return handle_ECHO(msg_ptr , conn,command_start+command_length+2); //starting from the end of \n , "ECHO\r\n <-- from here"
-    } else if (strcmp(command,"SET") == 0)
+    } else if (strcmp(command,"SET") == 0 && elements_number == 3 )
     {
         printf("this is a SET Command \n");
         return  handle_SET(msg_ptr, conn , command_start+command_length+2 );
-    }  else if (strcmp(command,"GET") == 0)
+    } else if (strcmp(command,"SET") == 0 )
+    {
+        printf("this is a SET EX command ") ;
+        return handle_SET_EX(msg_ptr,conn , command_start+command_length+2 ) ;
+    }
+    else if (strcmp(command,"GET") == 0)
     {
         printf("PARSED INTO A GET COMMAND ! \n");
         return  handle_GET(msg_ptr , conn,command_start+command_length+2);
@@ -363,6 +494,7 @@ bool try_one_request(struct Conn *client_con)
         free(msg_ptr);
         return false ;
     }
+
     int elements_number = extract_number(message +1,newline);
     printf("NUMBER OF ELEMENTS IN THE ARRAY : %d\n", elements_number);
 
@@ -400,4 +532,5 @@ bool try_one_request(struct Conn *client_con)
     free(msg_ptr);
     return true ;
 }
+
 
